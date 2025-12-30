@@ -30,6 +30,7 @@ import static io.micrometer.core.instrument.Metrics.globalRegistry;
 public class CrawlerService {
     private final LoggingService loggingService;
     private final ContactInfoRepository contactInfoRepository;
+    private final ContactInfoWriterService writerService;
     private final WebClient webClient;
     private final DefaultSitesProvider defaultSitesProvider;
 
@@ -99,9 +100,11 @@ public class CrawlerService {
     );
 
     public CrawlerService(ContactInfoRepository contactInfoRepository,
+                          ContactInfoWriterService writerService,
                           LoggingService loggingService,
                           DefaultSitesProvider defaultSitesProvider) {
         this.contactInfoRepository = contactInfoRepository;
+        this.writerService = writerService;
         this.loggingService = loggingService;
         this.defaultSitesProvider = defaultSitesProvider;
         this.webClient = WebClient.create();
@@ -138,7 +141,6 @@ public class CrawlerService {
     }
 
     private void workerLoop(List<String> statusMessages) {
-        // ✅ FIX 4.1 (N+1): буфер + пакетные вставки в БД
         final int BATCH_SIZE = 50;
         final List<ContactInfo> buffer = new ArrayList<>(BATCH_SIZE);
 
@@ -196,7 +198,7 @@ public class CrawlerService {
                         dbSaved.increment();
 
                         if (buffer.size() >= BATCH_SIZE) {
-                            contactInfoRepository.saveAll(buffer);
+                            writerService.saveBatch(buffer);
                             buffer.clear();
                         }
 
@@ -232,7 +234,7 @@ public class CrawlerService {
             }
         } finally {
             if (!buffer.isEmpty()) {
-                contactInfoRepository.saveAll(buffer);
+                writerService.saveBatch(buffer);
                 buffer.clear();
             }
         }
