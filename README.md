@@ -110,4 +110,101 @@ Swagger UI:
 ./gradlew clean test        # macOS / Linux
 gradlew.bat clean test      # Windows
 ```
+---
+
+## Проверка работы приложения и метрик: для управления производительностью приложения.
+
+### 1) Запуск приложения (Если до этого приложение не было запущено)
+Запустить `ContactCrawlerApplication` стандартно (из IDE) или из корня проекта:
+
+```bash
+./gradlew bootRun
+````
+
+> Если порт занят (8080), проверь процесс:
+>
+> ```bash
+> lsof -nP -iTCP:8080 -sTCP:LISTEN
+> ```
+>
+> Остановить процесс:
+>
+> ```bash
+> kill <PID>
+> ```
+>
+> Если не помогло:
+>
+> ```bash
+> kill -9 <PID>
+> ```
+
+### 2) Проверка Health
+
+Открыть в браузере:
+
+* [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health)
+
+Ожидаемый результат: статус `{"status":"UP"}` приложение поднялось и отвечает.
+
+### 3) Проверка списка метрик Actuator
+
+Открыть список метрик:
+
+* [http://localhost:8080/actuator/metrics](http://localhost:8080/actuator/metrics)
+
+### 4) Создать статистику чтобы оживить метрики
+
+Можно через Swagger, либо просто несколько раз выполнить команды в корне проекта:
+
+* [http://localhost:8080/api/contacts/answer?page=0&size=5](http://localhost:8080/api/contacts/answer?page=0&size=5)
+* [http://localhost:8080/api/contacts/search?query=beeline](http://localhost:8080/api/contacts/search?query=beeline)
+
+### 5) Посмотреть метрики HTTP и Prometheus-экспорт
+
+* Метрика HTTP-запросов (простой вариант):
+
+    * [http://localhost:8080/actuator/metrics/http.server.requests](http://localhost:8080/actuator/metrics/http.server.requests)
+* Prometheus формат (расширенный вариант):
+
+    * [http://localhost:8080/actuator/prometheus](http://localhost:8080/actuator/prometheus)
+
+### 6) Проверка Prometheus
+
+Если мониторинг поднят через `docker-compose` (папка `monitoring`):
+
+```bash
+cd monitoring
+docker compose up -d
+```
+
+Проверить таргеты:
+
+* [http://localhost:9090/targets](http://localhost:9090/targets)
+
+Ожидаемый результат: `contact-crawler` в статусе **UP**.
+
+### 7) Проверка кастомных метрик краулера (`crawler_*`)
+
+Открыть Prometheus-экспорт:
+
+* [http://localhost:8080/actuator/prometheus](http://localhost:8080/actuator/prometheus)
+
+Быстрая проверка в терминале (должны быть строки `crawler_...`):
+
+```bash
+curl -s http://localhost:8080/actuator/prometheus | grep crawler_
+```
+
+Ожидаемый результат: есть метрики вида:
+
+* `crawler_parse_success_total`, `crawler_parse_error_total`
+* `crawler_db_saved_total`
+* `crawler_parse_seconds_*` (таймер/гистограмма времени парсинга)
+* `crawler_parse_error_reason_total{reason="..."}` (ошибки по причинам)
+
+
+
+
+    
 
